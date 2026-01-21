@@ -2,29 +2,14 @@
 This module provides a clean way to register, retrieve, and manage
 background removal models.
 """
-import os
 from typing import Dict, Type
 
 from app.models.base import BackgroundRemover
 from app.models.rembg_model import RembgRemover
+from app.models.withoutbg_model import WithoutBgRemover
 from app.logging_config import get_logger
 
 logger = get_logger(__name__)
-
-
-# Check if we should load withoutbg (disabled in memory-constrained environments)
-ENABLE_WITHOUTBG = os.getenv("ENABLE_WITHOUTBG", "true").lower() == "true"
-
-# Only import withoutbg if enabled
-if ENABLE_WITHOUTBG:
-    try:
-        from app.models.withoutbg_model import WithoutBgRemover
-        logger.info("WithoutBG model enabled")
-    except ImportError:
-        logger.warning("WithoutBG model not available (import failed)")
-        ENABLE_WITHOUTBG = False
-else:
-    logger.info("WithoutBG model disabled (set ENABLE_WITHOUTBG=true to enable)")
 
 
 class ModelRegistry:
@@ -100,10 +85,7 @@ _registry = ModelRegistry()
 
 # Register all available models
 _registry.register(RembgRemover)
-
-# Only register WithoutBG if enabled and available
-if ENABLE_WITHOUTBG:
-    _registry.register(WithoutBgRemover)
+_registry.register(WithoutBgRemover)
 
 
 # Public API - these functions are what other modules should use

@@ -22,8 +22,7 @@ async def lifespan(app: FastAPI):
     Lifespan context manager for startup/shutdown events.
     
     Startup:
-    - Models are pre-downloaded during Docker build
-    - Initialize models in background after server starts
+    - Initialize all models (pre-load weights)
     
     Shutdown:
     - Currently nothing, but could cleanup resources
@@ -31,28 +30,12 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting background removal service...")
     
-    # Important: Don't block server startup with model initialization
-    # Server needs to bind to port ASAP for health checks
-    # Initialize models in background after startup
-    import asyncio
-    
-    async def init_models_background():
-        """Initialize models in background after server starts."""
-        # Give server time to bind to port first
-        await asyncio.sleep(1)
-        logger.info("Initializing models in background...")
-        try:
-            # Run in thread pool to not block event loop
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, initialize_all_models)
-            logger.info("Models initialized successfully")
-        except Exception as e:
-            logger.warning(f"Background model initialization failed: {e}")
-            logger.info("Models will lazy-load on first request instead")
-    
-    # Start background initialization (don't await - let it run async)
-    asyncio.create_task(init_models_background())
-    logger.info("Server ready - models initializing in background")
+    try:
+        initialize_all_models()
+        logger.info("All models initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize models: {e}")
+        # Continue anyway - models will lazy-load on first request
     
     yield  # App runs here
     

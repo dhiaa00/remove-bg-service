@@ -89,7 +89,7 @@ List available background removal models.
 
 ## Docker Deployment
 
-### Option 1: Docker Compose (Local Development)
+### Docker Compose
 
 Run both the API service and UI together:
 
@@ -112,17 +112,21 @@ Access:
 - **API**: http://localhost:8000
 - **UI**: http://localhost:7860
 
-### Option 2: API Only (Production/Render)
+### Option 2: API Only (Original)
 
-For production deployment (e.g., Render.com) with memory optimization:
+Run just the API service:
 
 ```bash
-# Build the optimized image
-docker build -f Dockerfile.render -t bg-removal-service .
+# Build the image
+docker build -t bg-removal-service .
 
 # Run the container
-docker run -p 10000:10000 \
-  -e ENABLE_WITHOUTBG=false \
+docker run -p 8000:8000 bg-removal-service
+
+# With environment variables
+docker run -p 8000:8000 \
+  -e LOG_LEVEL=DEBUG \
+  -e MAX_FILE_SIZE_MB=20 \
   bg-removal-service
 ```
 
@@ -145,58 +149,6 @@ docker run -p 7860:7860 \
   -e API_URL=http://localhost:8000 \
   bg-removal-ui
 ```
-
-## Cloud Deployment (Render.com)
-
-### Deployment Timeline
-
-```
-Docker Build (one-time, ~5-10 min):
-├── Install dependencies
-├── Download model (~176MB) ✓ Cached in image
-└── Build complete
-
-Server Startup (~5-10 seconds):
-├── t=0s:   Server starts
-├── t=1s:   Binds to port ✓ Health check passes
-├── t=2-4s: Models initialize in background
-└── t=5s:   Ready for fast requests
-
-First API Request:
-└── <2 seconds (model already loaded)
-```
-
-### Automatic Deployment
-
-1. **Fork/Push** this repository to GitHub
-2. **Connect to Render**: Go to [render.com](https://render.com) and create a new Blueprint
-3. **Deploy**: Point to your repository - Render will use `render.yaml` automatically
-
-### Manual Deployment
-
-1. Create a new **Web Service** on Render
-2. Connect your GitHub repository
-3. Configure:
-    - **Environment**: Docker
-    - **Dockerfile Path**: `Dockerfile.render`
-    - **Plan**: Free (512MB RAM) or Starter (1GB RAM)
-4. Add environment variables:
-    ```
-    ENABLE_WITHOUTBG=false
-    LOG_LEVEL=INFO
-    ```
-5. Deploy!
-
-**Key Points**:
-
-- ✅ Models pre-downloaded during build (no runtime download)
-- ✅ Server starts immediately (port binding <1 second)
-- ✅ Models initialize in background (1-3 seconds)
-- ✅ First request is fast (~2 seconds)
-- 💡 Free tier (512MB RAM): Only rembg model
-- 💰 Starter plan (1GB+ RAM): Both models available
-
-See [RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md) for detailed troubleshooting.
 
 ## Batch Testing
 
@@ -264,13 +216,12 @@ python ui/app.py
 
 Configuration via environment variables (or `.env` file):
 
-| Variable           | Default   | Description                                       |
-| ------------------ | --------- | ------------------------------------------------- |
-| `HOST`             | `0.0.0.0` | Server host                                       |
-| `PORT`             | `8000`    | Server port (10000 for Render)                    |
-| `LOG_LEVEL`        | `INFO`    | Logging level                                     |
-| `MAX_FILE_SIZE_MB` | `10`      | Max upload size                                   |
-| `ENABLE_WITHOUTBG` | `true`    | Enable withoutbg model (set false to save memory) |
+| Variable           | Default   | Description     |
+| ------------------ | --------- | --------------- |
+| `HOST`             | `0.0.0.0` | Server host     |
+| `PORT`             | `8000`    | Server port     |
+| `LOG_LEVEL`        | `INFO`    | Logging level   |
+| `MAX_FILE_SIZE_MB` | `10`      | Max upload size |
 
 ### UI Service
 
