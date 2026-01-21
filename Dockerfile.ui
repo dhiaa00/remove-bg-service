@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir -r requirements-ui.txt
 COPY ui/ ./ui/
 
 # Set environment variables
-ENV API_URL=http://localhost:8000
+ENV API_URL=https://remove-bg-service-production.up.railway.app
 ENV GRADIO_SERVER_NAME=0.0.0.0
 ENV GRADIO_SERVER_PORT=7860
 
