@@ -80,7 +80,8 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "background-removal-api",
-        "available_models": list_available_models()
+        "available_models": list_available_models(),
+        "message": "Service is running. Models may still be initializing in background."
     }
 
 

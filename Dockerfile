@@ -27,6 +27,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 COPY scripts/ ./scripts/
+COPY start.sh ./start.sh
+
+# Make startup script executable
+RUN chmod +x start.sh
 
 # Optional: Pre-download models during build
 # This makes the container larger but startup faster
@@ -39,6 +43,7 @@ COPY scripts/ ./scripts/
 ENV HOST=0.0.0.0
 ENV PORT=8000
 ENV LOG_LEVEL=INFO
+ENV PYTHONUNBUFFERED=1
 
 # Expose port (Railway will override PORT at runtime)
 EXPOSE 8000
@@ -46,5 +51,5 @@ EXPOSE 8000
 # Health check - removed because Railway doesn't use Docker healthchecks
 # Railway has its own healthcheck system that hits your app's HTTP endpoint
 
-# Run the application
-CMD ["python", "-m", "app.main"]
+# Run with startup script that reads PORT from environment
+CMD ["./start.sh"]

@@ -1,6 +1,7 @@
 """
 Entry point
 """
+import asyncio
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -16,13 +17,31 @@ setup_logging()
 logger = get_logger(__name__)
 
 
+async def background_model_initialization():
+    """
+    Initialize models in the background after the server starts.
+    This allows healthchecks to pass immediately while models load.
+    """
+    # Wait a bit to ensure the server is fully started
+    await asyncio.sleep(2)
+    
+    logger.info("Starting background model initialization...")
+    try:
+        initialize_all_models()
+        logger.info("Background model initialization completed successfully")
+    except Exception as e:
+        logger.error(f"Background model initialization failed: {e}")
+        logger.warning("Models will lazy-load on first request")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup/shutdown events.
     
     Startup:
-    - Initialize all models (pre-load weights)
+    - Start background task to initialize models AFTER healthcheck passes
+    - This ensures fast startup and healthcheck response
     
     Shutdown:
     - Currently nothing, but could cleanup resources
@@ -32,14 +51,9 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info(f"Server will listen on {settings.host}:{settings.port}")
     
-    try:
-        logger.info("Initializing models (this may take a few minutes on first deploy)...")
-        initialize_all_models()
-        logger.info("All models initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize models: {e}")
-        logger.warning("Continuing startup - models will lazy-load on first request")
-        # Continue anyway - models will lazy-load on first request
+    # Start model initialization in background (non-blocking)
+    asyncio.create_task(background_model_initialization())
+    logger.info("Background model initialization task started")
     
     yield  # App runs here
     
