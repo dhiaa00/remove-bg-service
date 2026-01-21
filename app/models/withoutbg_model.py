@@ -48,10 +48,16 @@ class WithoutBgRemover(BackgroundRemover):
         """
         if self._model is None:
             # Lazy initialization if not pre-loaded
+            logger.info("WithoutBG model not pre-loaded, initializing now...")
+            logger.warning("This may take 1-2 minutes and use significant memory")
             self.initialize()
         
         logger.debug("Processing image with withoutbg")
         try:
+            # Force garbage collection before processing to free memory
+            import gc
+            gc.collect()
+            
             # withoutbg can accept PIL Image directly
             # It returns a PIL Image with transparent background
             result = self._model.remove_background(image)
@@ -64,5 +70,5 @@ class WithoutBgRemover(BackgroundRemover):
             return result
             
         except Exception as e:
-            logger.error(f"WithoutBG processing failed: {e}")
+            logger.error(f"WithoutBG processing failed: {e}", exc_info=True)
             raise RuntimeError(f"Background removal failed: {e}") from e

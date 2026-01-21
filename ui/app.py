@@ -34,34 +34,67 @@ def remove_background(image: Image.Image, model: str) -> Image.Image | None:
     buffer.seek(0)
     
     try:
+        print(f"Calling API: {API_URL}/remove-background with model={model}")
         response = requests.post(
             f"{API_URL}/remove-background",
             files={"image": ("image.png", buffer, "image/png")},
             data={"model": model},
-            timeout=120
+            timeout=300  # Increased timeout for withoutbg (may need to download ~320MB)
         )
         
         if response.status_code == 200:
-            return Image.open(io.BytesIO(response.content))
+            result = Image.open(io.BytesIO(response.content))
+            print(f"Success: {model} returned image {result.size}")
+            return result
         else:
-            print(f"API error: {response.status_code} - {response.text}")
+            error_msg = f"API error for {model}: {response.status_code} - {response.text}"
+            print(error_msg)
+            gr.Warning(error_msg)
             return None
             
+    except requests.exceptions.Timeout:
+        error_msg = f"Timeout error for {model}. Model may be downloading (first request takes 1-2 minutes)."
+        print(error_msg)
+        gr.Warning(error_msg)
+        return None
     except Exception as e:
-        print(f"Request failed: {e}")
+        error_msg = f"Request failed for {model}: {str(e)}"
+        print(error_msg)
+        gr.Warning(error_msg)
         return None
 
 
-def process_image(image: Image.Image):
+def process_image(image: Image.Image, progress=gr.Progress()):
     """Process image with both models and return results."""
     if image is None:
-        return None, None, None
+        return None, None, None, "Please upload an image first."
     
-    # Process with both models
+    status_msg = ""
+    
+    # Process with rembg
+    progress(0.1, desc="Processing with rembg...")
+    status_msg += "🔄 Processing with rembg...\n"
     rembg_result = remove_background(image, "rembg")
+    
+    if rembg_result:
+        status_msg += "✅ rembg completed\n"
+    else:
+        status_msg += "❌ rembg failed\n"
+    
+    # Process with withoutbg
+    progress(0.5, desc="Processing with withoutbg (may take 1-2 min on first request)...")
+    status_msg += "🔄 Processing with withoutbg...\n"
     withoutbg_result = remove_background(image, "withoutbg")
     
-    return image, rembg_result, withoutbg_result
+    if withoutbg_result:
+        status_msg += "✅ withoutbg completed\n"
+    else:
+        status_msg += "❌ withoutbg failed (check if model is initialized)\n"
+    
+    progress(1.0, desc="Done!")
+    status_msg += "\n✅ Processing complete!"
+    
+    return image, rembg_result, withoutbg_result, status_msg
 
 
 def create_app():
@@ -88,6 +121,13 @@ def create_app():
         
         process_btn = gr.Button("Remove Background", variant="primary", size="lg")
         
+        status_box = gr.Textbox(
+            label="Status",
+            lines=5,
+            interactive=False,
+            placeholder="Status messages will appear here..."
+        )
+        
         with gr.Row():
             with gr.Column():
                 gr.Markdown("### Original")
@@ -105,7 +145,7 @@ def create_app():
         process_btn.click(
             fn=process_image,
             inputs=[input_image],
-            outputs=[original_output, rembg_output, withoutbg_output]
+            outputs=[original_output, rembg_output, withoutbg_output, status_box]
         )
         
         gr.Markdown("""

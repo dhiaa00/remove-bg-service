@@ -21,41 +21,46 @@ async def background_model_initialization():
     """
     Initialize models in the background after the server starts.
     This allows healthchecks to pass immediately while models load.
+    
+    Strategy:
+    1. Initialize rembg first (lighter, ~180MB, takes 10-20s)
+    2. Wait and garbage collect
+    3. Initialize withoutbg second (~320MB, takes 30-60s on first run)
+    
+    This sequential approach avoids memory spikes and OOM crashes.
     """
     from app.services.bg_removal import get_model
+    import gc
     
-    # Wait a bit to ensure the server is fully started
+    # Wait a bit to ensure the server is fully started and healthcheck has passed
     await asyncio.sleep(5)
     
-    settings = get_settings()
-    init_mode = settings.initialize_models.lower()
-    
-    logger.info(f"Starting background model initialization (mode: {init_mode})...")
+    logger.info("Starting sequential model initialization...")
     
     try:
-        import gc
+        # Step 1: Initialize rembg (lighter model)
+        logger.info("Initializing rembg model...")
+        rembg_model = get_model("rembg")
+        logger.info("✅ rembg model ready")
         
-        if init_mode == "all":
-            # Initialize all models (high memory usage)
-            logger.info("Initializing ALL models...")
-            initialize_all_models()
-        elif init_mode == "none":
-            # Don't initialize any models
-            logger.info("Skipping model initialization - models will lazy-load on first request")
-            return
-        else:
-            # Initialize specific model only (memory-efficient)
-            logger.info(f"Initializing single model: {init_mode}")
-            model = get_model(init_mode)
-            logger.info(f"Model {init_mode} initialized successfully")
+        # Force garbage collection and wait before next model
+        gc.collect()
+        logger.info("Waiting 5 seconds before initializing next model...")
+        await asyncio.sleep(5)
         
-        # Force garbage collection to free memory
+        # Step 2: Initialize withoutbg (heavier model)
+        logger.info("Initializing withoutbg model (may download ~320MB on first run)...")
+        withoutbg_model = get_model("withoutbg")
+        logger.info("✅ withoutbg model ready")
+        
+        # Final cleanup
         gc.collect()
         
-        logger.info("Background model initialization completed successfully")
+        logger.info("🎉 All models initialized successfully! Service is fully ready.")
+        
     except Exception as e:
-        logger.error(f"Background model initialization failed: {e}", exc_info=True)
-        logger.warning("Models will lazy-load on first request")
+        logger.error(f"Model initialization failed: {e}", exc_info=True)
+        logger.warning("Failed models will lazy-load on first request")
 
 
 @asynccontextmanager
