@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+.env
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing output
+output/
+test_images/
+
+# Model cache (can be large)
+.u2net/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

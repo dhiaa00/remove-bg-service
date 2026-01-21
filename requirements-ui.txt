@@ -1,0 +1,2 @@
+# UI dependencies (optional)
+gradio>=4.0.0

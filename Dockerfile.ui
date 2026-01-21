@@ -1,0 +1,38 @@
+# Build:   docker build -f Dockerfile.ui -t bg-removal-ui .
+# Run:     docker run -p 7860:7860 --network host bg-removal-ui
+#
+# Note: Requires the API service to be running at API_URL
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (for better layer caching)
+COPY requirements-ui.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements-ui.txt
+
+# Copy UI code
+COPY ui/ ./ui/
+
+# Set environment variables
+ENV API_URL=http://localhost:8000
+ENV GRADIO_SERVER_NAME=0.0.0.0
+ENV GRADIO_SERVER_PORT=7860
+
+# Expose port
+EXPOSE 7860
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:7860/ || exit 1
+
+# Run the UI application
+CMD ["python", "ui/app.py"]
