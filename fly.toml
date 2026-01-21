@@ -1,0 +1,44 @@
+# fly.toml app configuration file generated for background removal service
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "remove-bg-service"
+primary_region = "iad"
+
+[build]
+  # Use the Dockerfile in the root of the project
+  dockerfile = "Dockerfile"
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8000"
+  LOG_LEVEL = "INFO"
+  MAX_FILE_SIZE_MB = "10"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "60s"
+    interval = "30s"
+    method = "GET"
+    timeout = "10s"
+    path = "/"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024
+
+# Increase memory for production workloads (models require more RAM)
+# Uncomment and adjust as needed:
+# [[vm]]
+#   cpu_kind = "shared"
+#   cpus = 2
+#   memory_mb = 2048
