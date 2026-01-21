@@ -1,0 +1,55 @@
+# Optimized Dockerfile for Render.com deployment
+# - Lighter base image
+# - Only rembg model (saves memory)
+# - Pre-downloads model during build
+# - Optimized for low memory environments
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies (minimal for rembg only)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (for better layer caching)
+COPY requirements.txt .
+
+# Install only essential dependencies for production
+# We'll install rembg but NOT withoutbg to save memory
+RUN pip install --no-cache-dir \
+    fastapi==0.109.0 \
+    uvicorn[standard]==0.27.0 \
+    python-multipart==0.0.6 \
+    pillow==10.2.0 \
+    rembg==2.0.56 \
+    python-dotenv==1.0.0
+
+# Copy application code
+COPY app/ ./app/
+
+# Pre-download and cache the rembg model during build (saves startup time)
+# This is the KEY to fast first requests on Render
+# The model files are downloaded once during build and baked into the image
+RUN python -c "from rembg import new_session; session = new_session('u2net'); print('Model downloaded and cached successfully')"
+
+# Verify model is cached
+RUN ls -lh /root/.u2net/ || echo "Model cache directory not found"
+
+# Set environment variables
+ENV HOST=0.0.0.0
+ENV PORT=10000
+ENV LOG_LEVEL=INFO
+ENV PYTHONUNBUFFERED=1
+
+# Expose port (Render uses PORT env variable)
+EXPOSE 10000
+
+# Run with uvicorn directly for better control
+# --workers 1: Single worker to minimize memory
+# --timeout-keep-alive 75: Keep connections alive
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000} --workers 1 --timeout-keep-alive 75

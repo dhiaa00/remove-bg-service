@@ -1,0 +1,52 @@
+# Render.com Blueprint Configuration
+# This file defines the infrastructure for deploying to Render
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+    # Background Removal API Service
+    - type: web
+      name: bg-removal-api
+      env: docker
+      dockerfilePath: ./Dockerfile.render
+      plan: free # Change to 'starter' or higher for more resources
+      region: oregon # Choose: oregon, frankfurt, ohio, singapore
+      branch: master # Deploy from this branch
+
+      # Health check endpoint
+      healthCheckPath: /
+
+      # Environment variables
+      envVars:
+          - key: LOG_LEVEL
+            value: INFO
+          - key: MAX_FILE_SIZE_MB
+            value: 10
+          - key: ENABLE_WITHOUTBG
+            value: false # Disable second model to save memory on free tier
+          - key: PORT
+            sync: false # Render provides PORT automatically
+
+      # Auto-deploy on push to master
+      autoDeploy: true
+
+# Optional: Add UI service if you have enough quota
+# Uncomment to enable UI deployment
+#
+# - type: web
+#   name: bg-removal-ui
+#   env: docker
+#   dockerfilePath: ./Dockerfile.ui
+#   plan: free
+#   region: oregon
+#   branch: master
+#
+#   envVars:
+#     - key: API_URL
+#       fromService:
+#         type: web
+#         name: bg-removal-api
+#         envVarKey: RENDER_EXTERNAL_URL
+#     - key: GRADIO_SERVER_NAME
+#       value: 0.0.0.0
+#     - key: GRADIO_SERVER_PORT
+#       sync: false
