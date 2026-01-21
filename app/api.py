@@ -77,11 +77,17 @@ async def health_check():
     
     Returns basic service info and available models.
     """
+    from app.services.bg_removal import _registry
+    
+    initialized = list(_registry._model_instances.keys())
+    available = list_available_models()
+    
     return {
         "status": "healthy",
         "service": "background-removal-api",
-        "available_models": list_available_models(),
-        "message": "Service is running. Models may still be initializing in background."
+        "available_models": available,
+        "initialized_models": initialized,
+        "message": f"{len(initialized)}/{len(available)} models pre-loaded. Others will load on first use."
     }
 
 

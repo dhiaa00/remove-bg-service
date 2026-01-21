@@ -63,21 +63,44 @@ class ModelRegistry:
         
         Called at application startup to pre-load models,
         making first requests faster.
+        
+        Initializes models sequentially to avoid memory spikes.
         """
+        import gc
+        import time
+        
         logger.info("Initializing all registered models...")
         logger.info(f"Found {len(self._model_classes)} models to initialize")
         
-        for name, model_class in self._model_classes.items():
-            if name not in self._model_instances:
-                logger.info(f"Creating instance of model: {name}")
-                instance = model_class()
-                self._model_instances[name] = instance
-            
-            logger.info(f"Initializing model: {name} (may download ~320MB on first run)")
-            self._model_instances[name].initialize()
-            logger.info(f"Model {name} initialized successfully")
+        for idx, (name, model_class) in enumerate(self._model_classes.items()):
+            try:
+                if name not in self._model_instances:
+                    logger.info(f"Creating instance of model: {name}")
+                    instance = model_class()
+                    self._model_instances[name] = instance
+                
+                logger.info(f"Initializing model: {name} (may download ~320MB on first run)")
+                self._model_instances[name].initialize()
+                logger.info(f"Model {name} initialized successfully")
+                
+                # Force garbage collection after each model to free memory
+                gc.collect()
+                
+                # Add delay between models to avoid memory spikes (except after last model)
+                if idx < len(self._model_classes) - 1:
+                    logger.info("Waiting 3 seconds before next model to stabilize memory...")
+                    time.sleep(3)
+                
+            except Exception as e:
+                logger.error(f"Failed to initialize model {name}: {e}")
+                logger.warning(f"Model {name} will be lazy-loaded on first request")
+                # Remove failed instance so it can retry on first request
+                if name in self._model_instances:
+                    del self._model_instances[name]
+                # Continue with other models
+                continue
         
-        logger.info(f"All {len(self._model_instances)} models initialized")
+        logger.info(f"Initialization complete. {len(self._model_instances)} models ready")
     
     def list_models(self) -> list[str]:
         """Get list of available model names."""

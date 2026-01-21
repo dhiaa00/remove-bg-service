@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     
     # Model settings
     default_model: str = "rembg"
+    # Pre-initialize models on startup (set to "none" for memory-constrained environments)
+    # Options: "all", "rembg", "withoutbg", "none"
+    initialize_models: str = "rembg"
     
     @property
     def max_file_size_bytes(self) -> int:

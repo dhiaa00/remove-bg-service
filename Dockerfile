@@ -44,6 +44,9 @@ ENV HOST=0.0.0.0
 ENV PORT=8000
 ENV LOG_LEVEL=INFO
 ENV PYTHONUNBUFFERED=1
+# Only initialize rembg by default (memory-efficient for cloud deployments)
+# Set to "all" to pre-load both models, or "none" to lazy-load everything
+ENV INITIALIZE_MODELS=rembg
 
 # Expose port (Railway will override PORT at runtime)
 EXPOSE 8000

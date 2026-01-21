@@ -22,15 +22,39 @@ async def background_model_initialization():
     Initialize models in the background after the server starts.
     This allows healthchecks to pass immediately while models load.
     """
-    # Wait a bit to ensure the server is fully started
-    await asyncio.sleep(2)
+    from app.services.bg_removal import get_model
     
-    logger.info("Starting background model initialization...")
+    # Wait a bit to ensure the server is fully started
+    await asyncio.sleep(5)
+    
+    settings = get_settings()
+    init_mode = settings.initialize_models.lower()
+    
+    logger.info(f"Starting background model initialization (mode: {init_mode})...")
+    
     try:
-        initialize_all_models()
+        import gc
+        
+        if init_mode == "all":
+            # Initialize all models (high memory usage)
+            logger.info("Initializing ALL models...")
+            initialize_all_models()
+        elif init_mode == "none":
+            # Don't initialize any models
+            logger.info("Skipping model initialization - models will lazy-load on first request")
+            return
+        else:
+            # Initialize specific model only (memory-efficient)
+            logger.info(f"Initializing single model: {init_mode}")
+            model = get_model(init_mode)
+            logger.info(f"Model {init_mode} initialized successfully")
+        
+        # Force garbage collection to free memory
+        gc.collect()
+        
         logger.info("Background model initialization completed successfully")
     except Exception as e:
-        logger.error(f"Background model initialization failed: {e}")
+        logger.error(f"Background model initialization failed: {e}", exc_info=True)
         logger.warning("Models will lazy-load on first request")
 
 
