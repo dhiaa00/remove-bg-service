@@ -29,12 +29,16 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting background removal service...")
+    settings = get_settings()
+    logger.info(f"Server will listen on {settings.host}:{settings.port}")
     
     try:
+        logger.info("Initializing models (this may take a few minutes on first deploy)...")
         initialize_all_models()
         logger.info("All models initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize models: {e}")
+        logger.warning("Continuing startup - models will lazy-load on first request")
         # Continue anyway - models will lazy-load on first request
     
     yield  # App runs here

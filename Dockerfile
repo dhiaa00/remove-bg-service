@@ -40,12 +40,11 @@ ENV HOST=0.0.0.0
 ENV PORT=8000
 ENV LOG_LEVEL=INFO
 
-# Expose port
+# Expose port (Railway will override PORT at runtime)
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=240s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
+# Health check - removed because Railway doesn't use Docker healthchecks
+# Railway has its own healthcheck system that hits your app's HTTP endpoint
 
 # Run the application
 CMD ["python", "-m", "app.main"]

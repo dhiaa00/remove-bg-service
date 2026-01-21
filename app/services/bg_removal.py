@@ -65,14 +65,19 @@ class ModelRegistry:
         making first requests faster.
         """
         logger.info("Initializing all registered models...")
+        logger.info(f"Found {len(self._model_classes)} models to initialize")
+        
         for name, model_class in self._model_classes.items():
             if name not in self._model_instances:
+                logger.info(f"Creating instance of model: {name}")
                 instance = model_class()
                 self._model_instances[name] = instance
             
+            logger.info(f"Initializing model: {name} (may download ~320MB on first run)")
             self._model_instances[name].initialize()
+            logger.info(f"Model {name} initialized successfully")
         
-        logger.info(f"Initialized {len(self._model_instances)} models")
+        logger.info(f"All {len(self._model_instances)} models initialized")
     
     def list_models(self) -> list[str]:
         """Get list of available model names."""
